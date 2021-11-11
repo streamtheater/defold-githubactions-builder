@@ -15,6 +15,7 @@ on:
 env:
   DEFOLD_VERSION_SHA: 6bfeea3b13d7b8920483ea2cba9c181a8650b84d # version 1.2.188
   BUILD_SERVER: https://build.defold.com
+  SLACK_CHANNEL: defold-githubactions-builder
 
 jobs:
   build_on_macOS:
@@ -131,7 +132,7 @@ jobs:
       - name: Slack Notification
         uses: rtCamp/action-slack-notify@v2
         env:
-          SLACK_CHANNEL: scorebeat-defold-builds
+          SLACK_CHANNEL: ${{ env.SLACK_CHANNEL }}
           SLACK_COLOR: ${{ job.status }} # or a specific color like 'good' or '#ff00ff'
           SLACK_ICON: '-'
           SLACK_TITLE: '[${{ github.event.inputs.flavour }}] New apps :point_down: :point_down:'
