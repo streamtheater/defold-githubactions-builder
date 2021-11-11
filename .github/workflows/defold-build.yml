@@ -14,7 +14,9 @@ on:
 
 env:
   DEFOLD_VERSION_SHA: 6bfeea3b13d7b8920483ea2cba9c181a8650b84d # version 1.2.188
-  BUILD_SERVER: https://build.defold.com
+  DEFOLD_BUILD_SERVER: https://build.defold.com
+  DEFOLD_GAME_TITLE: ExampleGame
+  DEFOLD_GAME_DIRECTORY: ./ExampleGame
   SLACK_CHANNEL: defold-githubactions-builder
 
 jobs:
@@ -23,7 +25,7 @@ jobs:
     runs-on: macos-11
     defaults:
       run:
-        working-directory: ./ExampleGame
+        working-directory: ${{ env.DEFOLD_GAME_DIRECTORY }}
     outputs:
       iOS-url: ${{ steps.link.outputs.iOS-url }}
       iOS-qrcode: ${{ steps.link.outputs.iOS-qrcode }}
@@ -35,10 +37,10 @@ jobs:
         include:
           - os: Android
             platform: armv7-android
-            bundlePath: ExampleGame/ExampleGame.apk
+            bundlePath: ${{ env.DEFOLD_GAME_TITLE }}/${{ env.DEFOLD_GAME_TITLE }}.apk
           - os: iOS
             platform: armv7-darwin
-            bundlePath: ExampleGame.ipa
+            bundlePath: ${{ env.DEFOLD_GAME_TITLE }}.ipa
     steps:
       - uses: actions/checkout@v2
         with:
@@ -98,7 +100,7 @@ jobs:
       - name: Resolve libraries
         run: java -jar bob.jar resolve
       - name: Build
-        run: java -jar bob.jar --platform=${{ matrix.platform }} build --archive --build-server=${{env.BUILD_SERVER}}
+        run: java -jar bob.jar --platform=${{ matrix.platform }} build --archive --build-server=${{env.DEFOLD_BUILD_SERVER}}
       - name: Bundle
         run: java -jar bob.jar --platform=${{ matrix.platform }} ${{ steps.bob.outputs.flags }} bundle
       - name: Show files
@@ -111,13 +113,13 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.os }}_commit_${{ steps.short-commit-sha.outputs.sha }}
-          path: ExampleGame/build/default/${{matrix.bundlePath}}
+          path: ${{ env.DEFOLD_GAME_DIRECTORY }}/build/default/${{matrix.bundlePath}}
       - name: Get link from https://www.diawi.com
         uses: rnkdsh/action-upload-diawi@v1.2.1
         id: diawi
         with:
           token: ${{ secrets.DIAWI_TOKEN }}
-          file: ExampleGame/build/default/${{matrix.bundlePath}}
+          file: ${{ env.DEFOLD_GAME_DIRECTORY }}/build/default/${{matrix.bundlePath}}
       - name: Save diawi links to global outputs
         id: link
         run: |
