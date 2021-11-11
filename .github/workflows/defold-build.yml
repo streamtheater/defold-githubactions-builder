@@ -7,10 +7,10 @@ on:
         description: "Branch for Build"
         required: true
         default: "main"
-      flavour:
-        description: "Flavour: stable | prod"
-        required: true
-        default: "stable"
+      settings:
+        description: "File name setting. Example: 'prod.ini'"
+        required: false
+        default: ""
 
 env:
   DEFOLD_VERSION_SHA: 6bfeea3b13d7b8920483ea2cba9c181a8650b84d # version 1.2.188
@@ -104,7 +104,7 @@ jobs:
 
           FLAGS+=$([[ ${{ matrix.os }} = Android ]] && echo ' --keystore debug.keystore --keystore-pass debug.keystore.pass.txt --keystore-alias androiddebugkey' || echo)
 
-          FLAGS+=$([[ ${{ github.event.inputs.flavour }} = prod ]] && echo ' --settings prod.ini' || echo)
+          FLAGS+=$([[ ${{ github.event.inputs.settings }} ]] && echo ' --settings ${{ github.event.inputs.settings }}' || echo)
 
           echo "::set-output name=flags::$FLAGS"
       - name: Resolve libraries
@@ -147,7 +147,7 @@ jobs:
           SLACK_CHANNEL: ${{ env.SLACK_CHANNEL }}
           SLACK_COLOR: ${{ job.status }} # or a specific color like 'good' or '#ff00ff'
           SLACK_ICON: '-'
-          SLACK_TITLE: '[${{ github.event.inputs.flavour }}] New apps :point_down: :point_down:'
+          SLACK_TITLE: '${{ github.event.inputs.settings }} New apps:'
           SLACK_MESSAGE: |
             -
             *iOS:*
