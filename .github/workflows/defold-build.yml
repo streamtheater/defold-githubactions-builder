@@ -104,7 +104,7 @@ jobs:
 
           FLAGS+=$([[ ${{ matrix.os }} = Android ]] && echo ' --keystore debug.keystore --keystore-pass debug.keystore.pass.txt --keystore-alias androiddebugkey' || echo)
 
-          FLAGS+=$([[ ${{ github.event.inputs.settings }} ]] && echo ' --settings ${{ github.event.inputs.settings }}' || echo)
+          FLAGS+=$([[ '${{ github.event.inputs.settings }}' ]] && echo ' --settings ${{ github.event.inputs.settings }}' || echo)
 
           echo "::set-output name=flags::$FLAGS"
       - name: Resolve libraries
