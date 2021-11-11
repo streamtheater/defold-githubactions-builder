@@ -16,7 +16,7 @@ env:
   DEFOLD_VERSION_SHA: 6bfeea3b13d7b8920483ea2cba9c181a8650b84d # version 1.2.188
   DEFOLD_BUILD_SERVER: https://build.defold.com
   DEFOLD_GAME_TITLE: ExampleGame
-  DEFOLD_GAME_DIRECTORY: ./ExampleGame
+  DEFOLD_GAME_DIRECTORY: ./
   SLACK_CHANNEL: defold-githubactions-builder
 
 jobs:
