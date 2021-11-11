@@ -20,9 +20,19 @@ env:
   SLACK_CHANNEL: defold-githubactions-builder
 
 jobs:
+  variables:
+    name: Set variables
+    runs-on: ubuntu-20.04
+    outputs:
+      DEFOLD_GAME_TITLE: ${{ env.DEFOLD_GAME_TITLE }}
+    steps:
+      - name: Global Environment variables
+        id: var
+        run: echo "::set-output name=title::${{ env.DEFOLD_GAME_TITLE }}"
   build_on_macOS:
     name: Build
     runs-on: macos-11
+    needs: [variables]
     defaults:
       run:
         working-directory: ${{ env.DEFOLD_GAME_DIRECTORY }}
@@ -37,18 +47,15 @@ jobs:
         include:
           - os: Android
             platform: armv7-android
-            bundlePath: ${{ steps.defold.outputs.title }}/${{ steps.defold.outputs.title }}.apk
+            bundlePath: ${{ needs.variables.outputs.DEFOLD_GAME_TITLE }}/${{ needs.variables.outputs.DEFOLD_GAME_TITLE }}.apk
           - os: iOS
             platform: armv7-darwin
-            bundlePath: ${{ steps.defold.outputs.title }}.ipa
+            bundlePath: ${{ needs.variables.outputs.DEFOLD_GAME_TITLE }}.ipa
     steps:
-      - name: Set Defold constants
-        id: defold
-        run: |
-          echo "::set-output name=title::${{ env.DEFOLD_GAME_TITLE }}"
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.inputs.branch }}
+
       - uses: actions/setup-java@v1
         with:
           java-version: '11.0.2'
