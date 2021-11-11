@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-20.04
     outputs:
       DEFOLD_GAME_TITLE: ${{ env.DEFOLD_GAME_TITLE }}
+    steps:
   build_on_macOS:
     name: Build
     runs-on: macos-11
