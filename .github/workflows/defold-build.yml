@@ -1,0 +1,149 @@
+name: Build Defold Android & iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch for Build"
+        required: true
+        default: "main"
+      flavour:
+        description: "Flavour: stable | prod"
+        required: true
+        default: "stable"
+
+env:
+  DEFOLD_VERSION_SHA: 6bfeea3b13d7b8920483ea2cba9c181a8650b84d # version 1.2.188
+  BUILD_SERVER: https://build.defold.com
+
+jobs:
+  build_on_macOS:
+    name: Build
+    runs-on: macos-11
+    defaults:
+      run:
+        working-directory: ./ExampleGame
+    outputs:
+      iOS-url: ${{ steps.link.outputs.iOS-url }}
+      iOS-qrcode: ${{ steps.link.outputs.iOS-qrcode }}
+      Android-url: ${{ steps.link.outputs.Android-url }}
+      Android-qrcode: ${{ steps.link.outputs.Android-qrcode }}
+    strategy:
+      matrix:
+        os: [Android, iOS]
+        include:
+          - os: Android
+            platform: armv7-android
+            bundlePath: ExampleGame/ExampleGame.apk
+          - os: iOS
+            platform: armv7-darwin
+            bundlePath: ExampleGame.ipa
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      - uses: actions/setup-java@v1
+        with:
+          java-version: '11.0.2'
+
+      - name: Download bob.jar
+        run: |
+          wget -q http://d.defold.com/archive/stable/${{env.DEFOLD_VERSION_SHA}}/bob/bob.jar
+          java -jar bob.jar --version
+
+      - name: Install the Apple certificate and provisioning profile
+        id: apple
+        if: ${{ matrix.os == 'iOS' }}
+        env:
+          MACOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.MACOS_BUILD_CERTIFICATE_BASE64 }}
+          MACOS_P12_PASSWORD: ${{ secrets.MACOS_P12_PASSWORD }}
+          MACOS_BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.MACOS_BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: rAnDom_PaSsWord_09_@#
+        run: |
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # import certificate and provisioning profile from secrets
+          echo -n "$MACOS_BUILD_CERTIFICATE_BASE64" | base64 --decode --output $CERTIFICATE_PATH
+          echo -n "$MACOS_BUILD_PROVISION_PROFILE_BASE64" | base64 --decode --output $PP_PATH
+
+          # create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$MACOS_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # apply provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+          echo "::set-output name=identity::$(security find-identity -v -p codesigning | grep '1)' | sed -e 's/  1) //' | sed 's/ .*//')"
+          echo "::set-output name=mobileprovision::~/Library/MobileDevice/Provisioning\ Profiles/build_pp.mobileprovision"
+      - name: Bob bundle flags
+        id: bob
+        run: |
+          FLAGS+=$([[ ${{ matrix.os }} = iOS ]] && echo ' --identity ${{ steps.apple.outputs.identity }} --mobileprovisioning ${{ steps.apple.outputs.mobileprovision }}' || echo)
+
+          FLAGS+=$([[ ${{ matrix.os }} = Android ]] && echo ' --keystore debug.keystore --keystore-pass debug.keystore.pass.txt --keystore-alias androiddebugkey' || echo)
+
+          FLAGS+=$([[ ${{ github.event.inputs.flavour }} = prod ]] && echo ' --settings prod.ini' || echo)
+
+          echo "::set-output name=flags::$FLAGS"
+      - name: Resolve libraries
+        run: java -jar bob.jar resolve
+      - name: Build
+        run: java -jar bob.jar --platform=${{ matrix.platform }} build --archive --build-server=${{env.BUILD_SERVER}}
+      - name: Bundle
+        run: java -jar bob.jar --platform=${{ matrix.platform }} ${{ steps.bob.outputs.flags }} bundle
+      - name: Show files
+        run: |
+          ls -l build
+          ls -l build/default
+      - name: Get short commit sha
+        id: short-commit-sha
+        run: echo "::set-output name=sha::$(git rev-parse --short ${{ github.sha }})"
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.os }}_commit_${{ steps.short-commit-sha.outputs.sha }}
+          path: ExampleGame/build/default/${{matrix.bundlePath}}
+      - name: Get link from https://www.diawi.com
+        uses: rnkdsh/action-upload-diawi@v1.2.1
+        id: diawi
+        with:
+          token: ${{ secrets.DIAWI_TOKEN }}
+          file: ExampleGame/build/default/${{matrix.bundlePath}}
+      - name: Save diawi links to global outputs
+        id: link
+        run: |
+          echo "::set-output name=${{matrix.os}}-url::${{ steps.diawi.outputs.url }}"
+          echo "::set-output name=${{matrix.os}}-qrcode::${{ steps.diawi.outputs.qrcode }}"
+
+  slack:
+    name: Slack Notification
+    runs-on: ubuntu-20.04
+    needs: [build_on_macOS]
+    steps:
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_CHANNEL: scorebeat-defold-builds
+          SLACK_COLOR: ${{ job.status }} # or a specific color like 'good' or '#ff00ff'
+          SLACK_ICON: '-'
+          SLACK_TITLE: '[${{ github.event.inputs.flavour }}] New apps :point_down: :point_down:'
+          SLACK_MESSAGE: |
+            -
+            *iOS:*
+            Install: ${{ needs.build_on_macOS.outputs.iOS-url }}
+            QR-code: ${{ needs.build_on_macOS.outputs.iOS-qrcode }}
+            -
+            *Android:*
+            Install: ${{ needs.build_on_macOS.outputs.Android-url }}
+            QR-code: ${{ needs.build_on_macOS.outputs.Android-qrcode }}
+          SLACK_FOOTER: Apps stored are stored for 3 day. To install iOS you need to add your device UUID to our list
+          SLACK_USERNAME: Bob
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
