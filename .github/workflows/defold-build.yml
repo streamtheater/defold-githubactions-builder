@@ -26,6 +26,8 @@ jobs:
     outputs:
       DEFOLD_GAME_TITLE: ${{ env.DEFOLD_GAME_TITLE }}
     steps:
+      - name: Global Environment variables
+        run: echo "This is an empty step for a valid structure job"
   build_on_macOS:
     name: Build
     runs-on: macos-11
