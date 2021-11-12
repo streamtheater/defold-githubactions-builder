@@ -40,15 +40,11 @@ Set the required secret variables for GitHub Actions.
 
 | Secret      | Description |
 | ----------- | ----------- |
-| MACOS_BUILD_CERTIFICATE_BASE64 | Encrypted file content `.p12`, containing Apple Developer Certificate. And encoded in base64 for correct transmission to GitHub Secret.
-|
+| MACOS_BUILD_CERTIFICATE_BASE64 | Encrypted file content `.p12`, containing Apple Developer Certificate. And encoded in base64 for correct transmission to GitHub Secret. |
 | MACOS_P12_PASSWORD | Password to decrypted the file `.p12` |
-|
-| MACOS_BUILD_PROVISION_PROFILE_BASE64 | Apple profile file content `.mobileprovision` (in base64)
-|
-| DIAWI_TOKEN | API-token https://dashboard.diawi.com/profile/api, which generates links to pages for installing `.ipa` for iOS and `.apk` for Android
-|
-| SLACK_WEBHOOK | URL to webhook Slack https://slack.com/apps/A0F7XDUAZ-incoming-webhooks, which message is sent to the Slack with final apps.        |
+| MACOS_BUILD_PROVISION_PROFILE_BASE64 | Apple profile file content `.mobileprovision` (in base64) |
+| DIAWI_TOKEN | API-token https://dashboard.diawi.com/profile/api, which generates links to pages for installing `.ipa` for iOS and `.apk` for Android |
+| SLACK_WEBHOOK | URL to webhook Slack https://slack.com/apps/A0F7XDUAZ-incoming-webhooks, which message is sent to the Slack with final apps. |
 
 Hint: command for base64 encoding and copy
 ```bash
